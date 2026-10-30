@@ -1,0 +1,81 @@
+
+Options -Indexes -MultiViews
+DirectoryIndex index.php index.html
+
+# ---- Block dotfiles: .env, .git, .htaccess, .env.example ----
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# ---- Block config and other non-public files ----
+<FilesMatch "^(config\.php|composer\.(json|lock)|package(-lock)?\.json|README.*|CHANGELOG.*|LICENSE.*)$">
+    Require all denied
+</FilesMatch>
+
+# ---- Block common backup / log extensions ----
+<FilesMatch "\.(bak|sql|log|ini|dist|sh|swp|old|orig|env)$">
+    Require all denied
+</FilesMatch>
+
+# ---- Security headers ----
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    # Uncomment on HTTPS-only production:
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# ---- Block TRACE method ----
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_METHOD} ^TRACE [NC]
+    RewriteRule .* - [F]
+</IfModule>
+
+
+# ---- Clean URL rewrites ----
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block TRACE
+    RewriteCond %{REQUEST_METHOD} ^TRACE [NC]
+    RewriteRule .* - [F]
+
+    # Let real files and directories through untouched
+    #   (assets/, css, js, favicon, .well-known, etc.)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # ---- Clean URLs ----
+    # /donate/  or  /donate  → index.php
+    RewriteRule ^$            index.php    [L,QSA]
+    RewriteRule ^donate/?$    index.php    [L,QSA]
+
+    # /process → process.php
+    RewriteRule ^process/?$   process.php  [L,QSA]
+
+    # /callback → callback.php
+    RewriteRule ^callback/?$  callback.php [L,QSA]
+
+    # /return  → return.php   (preserves ?tx_ref=…)
+    RewriteRule ^return/?$    return.php   [L,QSA]
+
+    # ---- Optional: force clean URLs (301 .php → clean) ----
+    # Uncomment these if you want /return.php to redirect to /return
+    # instead of being served directly. Each pair is independent.
+    #
+    # RewriteCond %{THE_REQUEST} \s/+donate/index\.php[\s?] [NC]
+    # RewriteRule ^ /donate [R=301,L,NE]
+    #
+    # RewriteCond %{THE_REQUEST} \s/+donate/return\.php[\s?] [NC]
+    # RewriteRule ^ /donate/return%{QUERY_STRING} [R=301,L,NE,QSD]
+    #
+    # RewriteCond %{THE_REQUEST} \s/+donate/process\.php[\s?] [NC]
+    # RewriteRule ^ /donate/process [R=301,L,NE]
+    #
+    # RewriteCond %{THE_REQUEST} \s/+donate/callback\.php[\s?] [NC]
+    # RewriteRule ^ /donate/callback [R=301,L,NE]
+</IfModule>
